@@ -122,7 +122,7 @@ def explode_order_row(df, row_idx, products_col='products', catalog_lookup={}):
         origin   = info.get("Origin")
         hs_code  = info.get("HS Code")
         net_w    = item.get('weight') or item.get('netWeight')
-        t_net_w = net_w * units
+        t_net_w = net_w * units if net_w is not None and units is not None else None
 
         records.append({
             'SKU':           sku,
