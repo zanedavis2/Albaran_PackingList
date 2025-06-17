@@ -158,24 +158,26 @@ if doc_input:
         row_idx = int(match_idx[0])
         company_name = albaran_df.loc[row_idx, 'contactName']
 
-        contact_id = albaran_df.at[index, "contact"]
+        # ✅ Corrected variable name
+        contact_id = albaran_df.at[row_idx, "contact"]
+
+        # ✅ Properly indented
         url = f"https://api.holded.com/api/invoicing/v1/contacts/{contact_id}" 
-headers = {
-    "accept": "application/json",
-    "key": "acd2e9953041d758c9ebd8802719cbac"
-}
+        headers = {
+            "accept": "application/json",
+            "key": st.secrets["api_key"]  # use your secrets for deployment
+        }
 
-response = requests.get(url, headers=headers)
-data = response.json()
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()  # shows useful error if contact ID is invalid
+        data = response.json()
 
-# Get just the billAddress field
-bill = data.get("billAddress", {})
-bill_address_str = f"{bill.get('address', '')}, {bill.get('postalCode', '').strip()}, {bill.get('city', '')}, {bill.get('province', '')}, {bill.get('country', '')}"
+        bill = data.get("billAddress", {})
+        bill_address_str = f"{bill.get('address', '')}, {bill.get('postalCode', '').strip()}, {bill.get('city', '')}, {bill.get('province', '')}, {bill.get('country', '')}"
 
-        
         st.subheader(f"Shipping Info for {doc_input}")
         st.write(f"**Client**: {company_name}")
-        st.write(f"{bill_address_str}")
+        st.write(f"**Billing Address**: {bill_address_str}")
 
         result_df = explode_order_row(albaran_df, row_idx, catalog_lookup=catalog_lookup)
 
