@@ -157,11 +157,25 @@ if doc_input:
     if not match_idx.empty:
         row_idx = int(match_idx[0])
         company_name = albaran_df.loc[row_idx, 'contactName']
-        shipping_info = albaran_df.loc[row_idx, 'shippingData']
 
+        contact_id = albaran_df.at[index, "contact"]
+        url = f"https://api.holded.com/api/invoicing/v1/contacts/{contact_id}" 
+headers = {
+    "accept": "application/json",
+    "key": "acd2e9953041d758c9ebd8802719cbac"
+}
+
+response = requests.get(url, headers=headers)
+data = response.json()
+
+# Get just the billAddress field
+bill = data.get("billAddress", {})
+bill_address_str = f"{bill.get('address', '')}, {bill.get('postalCode', '').strip()}, {bill.get('city', '')}, {bill.get('province', '')}, {bill.get('country', '')}"
+
+        
         st.subheader(f"Shipping Info for {doc_input}")
         st.write(f"**Client**: {company_name}")
-        st.write(f"{shipping_info}")
+        st.write(f"{bill_address_str}")
 
         result_df = explode_order_row(albaran_df, row_idx, catalog_lookup=catalog_lookup)
 
