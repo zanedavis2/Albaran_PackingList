@@ -122,6 +122,7 @@ def explode_order_row(df, row_idx, products_col='products', catalog_lookup={}):
         origin   = info.get("Origin")
         hs_code  = info.get("HS Code")
         net_w    = item.get('weight') or item.get('netWeight')
+        t_net_w = net_w * units
 
         records.append({
             'SKU':           sku,
@@ -133,9 +134,9 @@ def explode_order_row(df, row_idx, products_col='products', catalog_lookup={}):
             'Origin':        origin,
             'HS Code':       hs_code,
             'Net W.':        net_w,
-            'T. Net W.':     net_w,
-            'Gross W.':      net_w,
-            'Total Weight':  net_w,
+            'T. Net W.':     t_net_w,
+            #'Gross W.':      net_w,
+            #'Total Weight':  net_w,
         })
 
     return pd.DataFrame(records)
