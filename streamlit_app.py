@@ -1,159 +1,215 @@
-import os
-import json, ast
-import requests
+import streamlit as st
 import pandas as pd
+import requests
+import os
+import time
+import json
 from datetime import datetime, timezone
 import pytz
-import streamlit as st
 
-API_KEY = os.getenv('HOLDED_API_KEY', 'acd2e9953041d758c9ebd8802719cbac')
-BASE_URL = 'https://api.holded.com/api/invoicing/v1/documents/'
-HEADERS = {'accept': 'application/json', 'key': API_KEY}
+# ------------------- AUTHENTICATION -------------------
+password = st.text_input("Enter password", type="password")
 
+if password != st.secrets["app_password"]:
+    st.stop()
 
-def fetch_doc(doc_type: str) -> pd.DataFrame:
-    url = f'{BASE_URL}{doc_type}'
-    resp = requests.get(url, headers=HEADERS, timeout=30)
-    resp.raise_for_status()
-    return pd.DataFrame(resp.json())
+# ------------------- API CONFIG -------------------
+API_KEY = st.secrets["api_key"]
+HEADERS = {"accept": "application/json", "key": API_KEY}
 
 
-def parse_from_cell(x):
-    if isinstance(x, dict):
-        return x
-    if isinstance(x, str):
-        try:
-            return json.loads(x)
-        except Exception:
-            return ast.literal_eval(x)
-    return {}
+# ------------------- DATA FETCHING -------------------
+@st.cache_data
+def fetch_albaranes():
+    url = "https://api.holded.com/api/invoicing/v1/documents/waybill"
+    response = requests.get(url, headers=HEADERS)
+    return pd.DataFrame(response.json())
 
 
-def build_dataframe() -> pd.DataFrame:
-    # Presupuestos (Estimates)
-    presupuesto_df = fetch_doc('estimate')
-    second_df = (
-        presupuesto_df[['id', 'date', 'docNumber']]
-        .rename(columns={'date': 'Presupuesto Date', 'docNumber': 'Presupuesto DocNum'})
-    )
+@st.cache_data(ttl=86400)  # Cache for 24 hours
+def fetch_all_products():
+    BASE_URL = "https://api.holded.com/api/invoicing/v1/products"
+    PAGE_SIZE = 100
+    HEADERS = {"accept": "application/json", "key": st.secrets["api_key"]}
+    BACKUP_FILE = "products_backup.json"
 
-    # Proformas
-    proforma_raw = fetch_doc('proform')
-    proforma_raw['from_dict'] = proforma_raw['from'].apply(parse_from_cell)
-    mask = proforma_raw['from_dict'].apply(lambda d: d.get('docType') == 'estimate')
-    proforma_df = (
-        proforma_raw.loc[mask, ['date', 'docNumber', 'from_dict', 'id']]
-        .assign(from_id=lambda df: df['from_dict'].apply(lambda d: d.get('id')))
-    )
-    proforma_df = proforma_df[['date', 'docNumber', 'from_id', 'id']].rename(columns={
-        'date': 'Proforma Date',
-        'docNumber': 'Proforma DocNum',
-        'id': 'prof_id',
-        'from_id': 'id'
-    })
-    second_df = second_df.merge(proforma_df, on='id', how='left')
+    all_products = []
+    page = 1
+    max_retries = 3
+    delay_seconds = 0.3  # to avoid hammering the API
 
-    # Pedidos (Sales Orders)
-    pedido_raw = fetch_doc('salesorder')
-    pedido_raw['from_dict'] = pedido_raw['from'].apply(parse_from_cell)
-    mask = pedido_raw['from_dict'].apply(lambda d: d.get('docType') == 'proform')
-    pedidos_df = (
-        pedido_raw.loc[mask, ['date', 'docNumber', 'from_dict', 'id']]
-        .assign(from_id=lambda df: df['from_dict'].apply(lambda d: d.get('id')))
-    )
-    pedidos_df = pedidos_df[['date', 'docNumber', 'from_id', 'id']].rename(columns={
-        'date': 'Pedido Date',
-        'docNumber': 'Pedido DocNum',
-        'id': 'ped_id',
-        'from_id': 'prof_id'
-    })
-    second_df = second_df.merge(pedidos_df[['prof_id', 'Pedido Date', 'Pedido DocNum', 'ped_id']],
-                                on='prof_id', how='left')
+    try:
+        while True:
+            for attempt in range(max_retries):
+                try:
+                    resp = requests.get(
+                        BASE_URL,
+                        headers=HEADERS,
+                        params={"page": page, "limit": PAGE_SIZE},
+                    )
+                    resp.raise_for_status()
 
-    # Main sales order info (Cliente and Total)
-    main_raw = fetch_doc('salesorder')
-    main_df = main_raw[['id', 'contactName', 'date', 'total', 'docNumber']].copy()
-    main_df = main_df.rename(columns={
-        'contactName': 'Cliente',
-        'total': 'Total',
-        'docNumber': 'Original Pedido DocNum'
-    })
-    main_df = main_df.merge(second_df.drop(columns=['id']).rename(columns={'ped_id': 'id'}),
-                            on='id', how='left')
-    main_df = main_df.rename(columns={'date': 'Pedido Date'})
+                    data = resp.json()
+                    chunk = data.get("data", data) if isinstance(data, dict) else data
 
-    # Albaranes (Waybills)
-    albaran_raw = fetch_doc('waybill')
-    albaran_raw['fromID'] = albaran_raw['from'].apply(lambda d: d.get('id') if isinstance(d, dict) else None)
-    albaran_df = albaran_raw[['id', 'fromID', 'date', 'docNumber']].rename(columns={
-        'id': 'alb_id',
-        'fromID': 'id',
-        'date': 'Albaran Date',
-        'docNumber': 'Albaran DocNum'
-    })
-    main_df = main_df.merge(albaran_df[['id', 'Albaran Date', 'Albaran DocNum', 'alb_id']],
-                            on='id', how='left')
+                    if not chunk:
+                        raise ValueError("Received empty response or unexpected format.")
 
-    # Facturas (Invoices)
-    factura_raw = fetch_doc('invoice')
-    factura_raw['from_dict'] = factura_raw['from'].apply(parse_from_cell)
-    mask = factura_raw['from_dict'].apply(lambda d: d.get('docType') == 'waybill')
-    factura_df = factura_raw.loc[mask, ['date', 'docNumber', 'from_dict']].assign(
-        from_id=lambda df: df['from_dict'].apply(lambda d: d.get('id'))
-    )
-    factura_df = factura_df[['date', 'docNumber', 'from_id']].rename(columns={
-        'date': 'Factura Date',
-        'docNumber': 'Factura DocNum',
-        'from_id': 'alb_id'
-    })
-    main_df = main_df.merge(factura_df, on='alb_id', how='left')
+                    all_products.extend(chunk)
 
-    # Date conversions
-    date_cols = ['Presupuesto Date', 'Proforma Date', 'Pedido Date', 'Albaran Date', 'Factura Date']
+                    if len(chunk) < PAGE_SIZE:
+                        raise StopIteration  # No more pages
 
-    for col in date_cols:
-        if col in main_df.columns:
-            main_df[col] = pd.to_datetime(main_df[col], unit='s', utc=True, errors='coerce')
-            main_df[col] = main_df[col].dt.tz_convert('Europe/Madrid').dt.date
+                    page += 1
+                    time.sleep(delay_seconds)
+                    break  # exit retry loop on success
 
-    main_df['Presupuesto → Proforma'] = (main_df['Proforma Date'] - main_df['Presupuesto Date']).dt.days
-    main_df['Proforma → Pedido'] = (main_df['Pedido Date'] - main_df['Proforma Date']).dt.days
-    main_df['Pedido → Albaran'] = (main_df['Albaran Date'] - main_df['Pedido Date']).dt.days
-    main_df['Albaran → Factura'] = (main_df['Factura Date'] - main_df['Albaran Date']).dt.days
+                except requests.exceptions.RequestException as e:
+                    st.warning(f"⚠️ Attempt {attempt + 1} failed for page {page}: {e}")
+                    time.sleep(2 ** attempt)  # exponential backoff
 
-    ordered = [
-        'Cliente', 'Total',
-        'Presupuesto Date',
-        'Presupuesto → Proforma',
-        'Proforma Date',
-        'Proforma → Pedido',
-        'Pedido Date',
-        'Pedido → Albaran',
-        'Albaran Date',
-        'Albaran → Factura',
-        'Factura Date',
-        'Presupuesto DocNum',
-        'Proforma DocNum',
-        'Pedido DocNum',
-        'Albaran DocNum',
-        'Factura DocNum',
-        'Original Pedido DocNum'
-    ]
-    main_df['Total'] = main_df['Total'].round(2)
-    return main_df[ordered]
+            else:
+                st.error("🚨 All retries failed. Loading from backup if available.")
+                raise ConnectionError("API failed after retries")
+
+    except (ConnectionError, StopIteration, ValueError):
+        # Save to disk if we fetched at least one page
+        if all_products:
+            with open(BACKUP_FILE, "w", encoding="utf-8") as f:
+                json.dump(all_products, f, ensure_ascii=False, indent=2)
+            st.success("✅ Product data fetched and cached to backup.")
+        elif os.path.exists(BACKUP_FILE):
+            with open(BACKUP_FILE, "r", encoding="utf-8") as f:
+                all_products = json.load(f)
+            st.warning("⚠️ Using local backup data (products_backup.json)")
+        else:
+            st.error("❌ No product data available from API or backup.")
+            return []
+
+    return all_products
 
 
-@st.cache_data(show_spinner='Fetching data...')
-def load_data():
-    return build_dataframe()
+# ------------------- HELPERS -------------------
+def build_origin_hs_lookup(all_products):
+    """Builds a lookup dict keyed by product ID with Origin & HS Code."""
+    lookup = {}
+    for p in all_products:
+        pid = p.get("id") or p.get("productId")
+        if not pid:
+            continue
+        origin = hs_code = None
+        for attr in p.get("attributes", []):
+            name = attr.get("name", "").strip().lower()
+            val = attr.get("value")
+            if name == "origen":
+                origin = val
+            elif name == "taric":
+                hs_code = val
+        lookup[pid] = {"Origin": origin, "HS Code": hs_code}
+    return lookup
 
 
-st.title('Holded Document Pipeline')
+def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
+    """Explodes the products list inside one albarán row into a flat DataFrame."""
+    items = df.at[row_idx, products_col] or []
+    records = []
 
-if st.button('Update'):
-    load_data.clear()
+    for item in items:
+        sku = item.get("sku")
+        name = item.get("name")
+        units = item.get("units") or item.get("quantity")
+        unit_price = item.get("price") or item.get("unitPrice")
+        tax = 1 + (item.get("tax", 0) / 100)
+        discount = 1 - (item.get("discount", 0) / 100)
 
-df = load_data()
-st.dataframe(df, use_container_width=True)
+        unit_price = (
+            round(unit_price * discount, 2) if units is not None and unit_price is not None else None
+        )
+        subtotal = (
+            round(units * unit_price, 2) if units is not None and unit_price is not None else None
+        )
+        total = round(subtotal * tax, 2) if subtotal is not None else None
 
+        pid = item.get("productId")
+        info = catalog_lookup.get(pid, {})
+        origin = info.get("Origin")
+        hs_code = info.get("HS Code")
+        net_w = item.get("weight") or item.get("netWeight")
+        t_net_w = net_w * units if net_w is not None and units is not None else None
+
+        records.append(
+            {
+                "SKU": sku,
+                "Item": name,
+                "Units": units,
+                "Unit Price": unit_price,
+                "Subtotal": subtotal,
+                "Total": total,
+                "Origin": origin,
+                "HS Code": hs_code,
+                "Net W.": net_w,
+                "T. Net W.": t_net_w,
+            }
+        )
+
+    return pd.DataFrame(records)
+
+
+# ------------------- STREAMLIT APP -------------------
+
+st.title("Albarán Lookup")
+
+doc_input = st.text_input("Enter Albarán DocNumber (e.g. A250245)")
+
+if doc_input:
+    # ❗ NORMALIZE INPUT TO BE CASE-INSENSITIVE
+    doc_input_norm = doc_input.strip().upper()
+
+    albaran_df = fetch_albaranes()
+    all_products = fetch_all_products()
+    catalog_lookup = build_origin_hs_lookup(all_products)
+
+    # Ensure the docNumber column is string and compare in upper-case for case-insensitive search
+    albaran_df["docNumber"] = albaran_df["docNumber"].astype(str)
+    match_idx = albaran_df.index[albaran_df["docNumber"].str.upper() == doc_input_norm]
+
+    if not match_idx.empty:
+        row_idx = int(match_idx[0])
+        company_name = albaran_df.loc[row_idx, "contactName"]
+
+        contact_id = albaran_df.at[row_idx, "contact"]
+        url = f"https://api.holded.com/api/invoicing/v1/contacts/{contact_id}"
+        headers = {
+            "accept": "application/json",
+            "key": st.secrets["api_key"],
+        }
+
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+
+        bill = data.get("billAddress", {})
+        bill_address_str = (
+            f"{bill.get('address', '')}, {bill.get('postalCode', '').strip()}, "
+            f"{bill.get('city', '')}, {bill.get('province', '')}, {bill.get('country', '')}"
+        )
+
+        st.subheader(f"Shipping Info for {doc_input}")
+        st.write(f"**Client**: {company_name}")
+        st.write(f"**Billing Address**: {bill_address_str}")
+
+        result_df = explode_order_row(albaran_df, row_idx, catalog_lookup=catalog_lookup)
+
+        st.subheader("Product Table")
+        st.dataframe(result_df)
+
+        csv = result_df.to_csv(index=False).encode("utf-8-sig")
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv,
+            file_name=f"albaran_{doc_input}.csv",
+            mime="text/csv",
+        )
+    else:
+        st.warning(f"No document found with DocNumber: {doc_input}")
 
