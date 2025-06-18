@@ -194,7 +194,7 @@ if doc_input:
             f"{bill.get('city', '')}, {bill.get('province', '')}, {bill.get('country', '')}"
         )
 
-        st.subheader(f"Shipping Info for {doc_input}")
+        st.subheader(f"Shipping Info for {albaran_df.loc[row_idx, 'docNumber']}")
         st.write(f"**Client**: {company_name}")
         st.write(f"**Billing Address**: {bill_address_str}")
 
@@ -205,11 +205,12 @@ if doc_input:
 
         csv = result_df.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
-            label="📥 Download CSV",
+            label="📅 Download CSV",
             data=csv,
-            file_name=f"albaran_{doc_input}.csv",
+            file_name=f"albaran_{albaran_df.loc[row_idx, 'docNumber']}.csv",
             mime="text/csv",
         )
     else:
         st.warning(f"No document found with DocNumber: {doc_input}")
+
 
