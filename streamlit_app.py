@@ -7,17 +7,18 @@ import json
 from datetime import datetime, timezone
 import pytz
 
+# ------------------- AUTHENTICATION -------------------
 password = st.text_input("Enter password", type="password")
 
 if password != st.secrets["app_password"]:
     st.stop()
 
-
-
-# API config
+# ------------------- API CONFIG -------------------
 API_KEY = st.secrets["api_key"]
 HEADERS = {"accept": "application/json", "key": API_KEY}
 
+
+# ------------------- DATA FETCHING -------------------
 @st.cache_data
 def fetch_albaranes():
     url = "https://api.holded.com/api/invoicing/v1/documents/waybill"
@@ -41,8 +42,11 @@ def fetch_all_products():
         while True:
             for attempt in range(max_retries):
                 try:
-                    #st.write(f"🔄 Fetching products - page {page}...")
-                    resp = requests.get(BASE_URL, headers=HEADERS, params={"page": page, "limit": PAGE_SIZE})
+                    resp = requests.get(
+                        BASE_URL,
+                        headers=HEADERS,
+                        params={"page": page, "limit": PAGE_SIZE},
+                    )
                     resp.raise_for_status()
 
                     data = resp.json()
@@ -84,7 +88,10 @@ def fetch_all_products():
 
     return all_products
 
+
+# ------------------- HELPERS -------------------
 def build_origin_hs_lookup(all_products):
+    """Builds a lookup dict keyed by product ID with Origin & HS Code."""
     lookup = {}
     for p in all_products:
         pid = p.get("id") or p.get("productId")
@@ -101,79 +108,91 @@ def build_origin_hs_lookup(all_products):
         lookup[pid] = {"Origin": origin, "HS Code": hs_code}
     return lookup
 
-def explode_order_row(df, row_idx, products_col='products', catalog_lookup={}):
+
+def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
+    """Explodes the products list inside one albarán row into a flat DataFrame."""
     items = df.at[row_idx, products_col] or []
     records = []
 
     for item in items:
-        sku        = item.get('sku')
-        name       = item.get('name')
-        units      = item.get('units') or item.get('quantity')
-        unit_price = item.get('price') or item.get('unitPrice')
-        tax        = 1 + (item.get('tax', 0) / 100)
-        discount   = 1 - (item.get('discount', 0) / 100)
+        sku = item.get("sku")
+        name = item.get("name")
+        units = item.get("units") or item.get("quantity")
+        unit_price = item.get("price") or item.get("unitPrice")
+        tax = 1 + (item.get("tax", 0) / 100)
+        discount = 1 - (item.get("discount", 0) / 100)
 
-        unit_price = round(unit_price * discount, 2) if units is not None and unit_price is not None else None
-        subtotal   = round(units * unit_price, 2) if units is not None and unit_price is not None else None
-        total      = round(subtotal * tax, 2) if subtotal is not None else None
+        unit_price = (
+            round(unit_price * discount, 2) if units is not None and unit_price is not None else None
+        )
+        subtotal = (
+            round(units * unit_price, 2) if units is not None and unit_price is not None else None
+        )
+        total = round(subtotal * tax, 2) if subtotal is not None else None
 
-        pid   = item.get('productId')
-        info  = catalog_lookup.get(pid, {})
-        origin   = info.get("Origin")
-        hs_code  = info.get("HS Code")
-        net_w    = item.get('weight') or item.get('netWeight')
+        pid = item.get("productId")
+        info = catalog_lookup.get(pid, {})
+        origin = info.get("Origin")
+        hs_code = info.get("HS Code")
+        net_w = item.get("weight") or item.get("netWeight")
         t_net_w = net_w * units if net_w is not None and units is not None else None
 
-        records.append({
-            'SKU':           sku,
-            'Item':          name,
-            'Units':         units,
-            'Unit Price':    unit_price,
-            'Subtotal':      subtotal,
-            'Total':         total,
-            'Origin':        origin,
-            'HS Code':       hs_code,
-            'Net W.':        net_w,
-            'T. Net W.':     t_net_w,
-            #'Gross W.':      net_w,
-            #'Total Weight':  net_w,
-        })
+        records.append(
+            {
+                "SKU": sku,
+                "Item": name,
+                "Units": units,
+                "Unit Price": unit_price,
+                "Subtotal": subtotal,
+                "Total": total,
+                "Origin": origin,
+                "HS Code": hs_code,
+                "Net W.": net_w,
+                "T. Net W.": t_net_w,
+            }
+        )
 
     return pd.DataFrame(records)
 
-# --- STREAMLIT APP STARTS HERE ---
+
+# ------------------- STREAMLIT APP -------------------
 
 st.title("Albarán Lookup")
 
 doc_input = st.text_input("Enter Albarán DocNumber (e.g. A250245)")
 
 if doc_input:
+    # ❗ NORMALIZE INPUT TO BE CASE-INSENSITIVE
+    doc_input_norm = doc_input.strip().upper()
+
     albaran_df = fetch_albaranes()
     all_products = fetch_all_products()
     catalog_lookup = build_origin_hs_lookup(all_products)
 
-    match_idx = albaran_df.index[albaran_df['docNumber'] == doc_input]
+    # Ensure the docNumber column is string and compare in upper-case for case-insensitive search
+    albaran_df["docNumber"] = albaran_df["docNumber"].astype(str)
+    match_idx = albaran_df.index[albaran_df["docNumber"].str.upper() == doc_input_norm]
 
     if not match_idx.empty:
         row_idx = int(match_idx[0])
-        company_name = albaran_df.loc[row_idx, 'contactName']
+        company_name = albaran_df.loc[row_idx, "contactName"]
 
-        # ✅ Corrected variable name
         contact_id = albaran_df.at[row_idx, "contact"]
-
-        # ✅ Properly indented
-        url = f"https://api.holded.com/api/invoicing/v1/contacts/{contact_id}" 
+        url = f"https://api.holded.com/api/invoicing/v1/contacts/{contact_id}"
         headers = {
             "accept": "application/json",
-            "key": st.secrets["api_key"]  # use your secrets for deployment
+            "key": st.secrets["api_key"],
         }
 
         response = requests.get(url, headers=headers)
-        response.raise_for_status()  # shows useful error if contact ID is invalid
+        response.raise_for_status()
         data = response.json()
 
         bill = data.get("billAddress", {})
-        bill_address_str = f"{bill.get('address', '')}, {bill.get('postalCode', '').strip()}, {bill.get('city', '')}, {bill.get('province', '')}, {bill.get('country', '')}"
+        bill_address_str = (
+            f"{bill.get('address', '')}, {bill.get('postalCode', '').strip()}, "
+            f"{bill.get('city', '')}, {bill.get('province', '')}, {bill.get('country', '')}"
+        )
 
         st.subheader(f"Shipping Info for {doc_input}")
         st.write(f"**Client**: {company_name}")
@@ -189,7 +208,8 @@ if doc_input:
             label="📥 Download CSV",
             data=csv,
             file_name=f"albaran_{doc_input}.csv",
-            mime="text/csv"
+            mime="text/csv",
         )
     else:
         st.warning(f"No document found with DocNumber: {doc_input}")
+
