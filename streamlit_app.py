@@ -199,8 +199,22 @@ if doc_input:
                 f"{bill.get('city', '')}, {bill.get('province', '')}, {bill.get('country', '')}"
             )
 
+        contact_email = data.get("email")
+        if pd.isnull(contact_email):
+            contact_email = "Not available"
+            
+        contact_phone = data.get("phone")
+        if pd.isnull(contact_phone):
+            contact_phone = "Not available"
+            
+        contact_mobile = data.get("mobile")
+        if pd.isnull(contact_mobile):
+            contact_mobile = "Not available"
+            
         st.subheader(f"Shipping Info for {albaran_df.loc[row_idx, 'docNumber']}")
         st.write(f"**Client**: {company_name}")
+        st.write(f"**Email**: {contact_email}")
+        st.write(f"**Phone**: {contact_email}  **Mobile**: {contact_mobile}")
         st.write(f"**Billing Address**: {bill_address_str}")
 
         result_df = explode_order_row(albaran_df, row_idx, catalog_lookup=catalog_lookup)
