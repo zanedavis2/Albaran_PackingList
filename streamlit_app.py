@@ -200,15 +200,15 @@ if doc_input:
             )
 
         contact_email = data.get("email")
-        if pd.isnull(contact_email):
+        if not contact_email:
             contact_email = "Not available"
             
         contact_phone = data.get("phone")
-        if pd.isnull(contact_phone):
+        if not contact_phone:
             contact_phone = "Not available"
             
         contact_mobile = data.get("mobile")
-        if pd.isnull(contact_mobile):
+        if not contact_mobile:
             contact_mobile = "Not available"
             
         st.subheader(f"Shipping Info for {albaran_df.loc[row_idx, 'docNumber']}")
