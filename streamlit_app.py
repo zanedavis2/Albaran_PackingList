@@ -215,7 +215,7 @@ if doc_input:
         st.subheader(f"Shipping Info for {albaran_df.loc[row_idx, 'docNumber']}")
         st.write(f"**Client**: {company_name}")
         st.write(f"**Email**: {contact_email}")
-        st.write(f"**Phone**: {contact_phone}&nbsp;&nbsp;&nbsp;&nbsp;**Mobile**: {contact_mobile}", unsafe_allow_html=True)
+        st.write(f"**Phone**: {contact_phone}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**Mobile**: {contact_mobile}", unsafe_allow_html=True)
         st.write(f"**Billing Address**: {bill_address_str}")
 
         result_df = explode_order_row(albaran_df, row_idx, catalog_lookup=catalog_lookup)
