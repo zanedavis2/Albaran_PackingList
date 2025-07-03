@@ -177,6 +177,7 @@ if doc_input:
         row_idx = int(match_idx[0])
         company_name = albaran_df.loc[row_idx, "contactName"]
 
+        
         contact_id = albaran_df.at[row_idx, "contact"]
         url = f"https://api.holded.com/api/invoicing/v1/contacts/{contact_id}"
         headers = {
@@ -188,11 +189,15 @@ if doc_input:
         response.raise_for_status()
         data = response.json()
 
-        bill = data.get("billAddress", {})
-        bill_address_str = (
-            f"{bill.get('address', '')}, {bill.get('postalCode', '').strip()}, "
-            f"{bill.get('city', '')}, {bill.get('province', '')}, {bill.get('country', '')}"
-        )
+
+        bill_address_str = albaran_df.loc[index, 'shippingData']
+        
+        if pd.isnull(bill_address_str):
+            bill = data.get("billAddress", {})
+            bill_address_str = (
+                f"{bill.get('address', '')}, {bill.get('postalCode', '').strip()}, "
+                f"{bill.get('city', '')}, {bill.get('province', '')}, {bill.get('country', '')}"
+            )
 
         st.subheader(f"Shipping Info for {albaran_df.loc[row_idx, 'docNumber']}")
         st.write(f"**Client**: {company_name}")
