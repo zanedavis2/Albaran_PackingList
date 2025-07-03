@@ -190,7 +190,7 @@ if doc_input:
         data = response.json()
 
 
-        bill_address_str = albaran_df.loc[index, 'shippingData']
+        bill_address_str = albaran_df.loc[row_idx, 'shippingData']
         
         if pd.isnull(bill_address_str):
             bill = data.get("billAddress", {})
