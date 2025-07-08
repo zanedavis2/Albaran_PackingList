@@ -281,22 +281,26 @@ if doc_input:
                 return ['font-weight: bold; text-align: right'] * len(row)
             return [''] * len(row)
         
-        # Apply styling and formatting for explode_order_row DataFrame
+        # Helper: only format if number
+        def safe_format(fmt):
+            return lambda x: fmt.format(x) if isinstance(x, (int, float)) else x
+        
+        # Styled dataframe with safe formatting
         styled_df = (
             result_df
             .style
             .apply(highlight_subcategories, axis=1)
             .format({
-                "Units": "{:,.1f}",
-                "Unit Price": "{:,.2f}",
-                "Subtotal": "{:,.2f}",
-                "Total": "{:,.2f}",
-                "Net W.": "{:.2f}",
-                "T. Net W.": "{:.3f}",
+                "Units": safe_format("{:,.1f}"),
+                "Unit Price": safe_format("{:,.2f}"),
+                "Subtotal": safe_format("{:,.2f}"),
+                "Total": safe_format("{:,.2f}"),
+                "Net W.": safe_format("{:.2f}"),
+                "T. Net W.": safe_format("{:.3f}"),
             }, na_rep="—")
         )
         
-        st.write(styled_df)
+        st.dateframe(styled_df)
 
         csv = result_df.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
