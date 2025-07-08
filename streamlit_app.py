@@ -300,7 +300,7 @@ if doc_input:
             }, na_rep="—")
         )
         
-        st.dateframe(styled_df)
+        st.dataframe(styled_df)
 
         csv = result_df.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
