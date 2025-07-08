@@ -110,9 +110,10 @@ def build_origin_hs_lookup(all_products):
 
 
 def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
-    """Explodes the products list inside one albarán row into a flat DataFrame."""
+    """Explodes the products list inside one albarán row into a flat DataFrame grouped by subcategory with subtotal and sorting."""
+
     items = df.at[row_idx, products_col] or []
-    records = []
+    grouped = {}
 
     for item in items:
         sku = item.get("sku")
@@ -137,22 +138,76 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
         net_w = item.get("weight") or item.get("netWeight")
         t_net_w = net_w * units if net_w is not None and units is not None else None
 
-        records.append(
-            {
-                "SKU": sku,
-                "Item": name,
-                "Units": units,
-                "Unit Price": unit_price,
-                "Subtotal": subtotal,
-                "Total": total,
-                "Origin": origin,
-                "HS Code": hs_code,
-                "Net W.": net_w,
-                "T. Net W.": t_net_w,
-            }
-        )
+        # Determine subcategory
+        attributes = info.get("Attributes", [])
+        subcategory = "Sin línea de productos"
+        for attr in attributes:
+            if attr.get("name") == "Product Line":
+                subcategory = attr.get("value") or subcategory
+                break
 
-    return pd.DataFrame(records)
+        row_data = {
+            "SKU": sku,
+            "Item": name,
+            "Units": units,
+            "Unit Price": unit_price,
+            "Subtotal": subtotal,
+            "Total": total,
+            "Origin": origin,
+            "HS Code": hs_code,
+            "Net W.": net_w,
+            "T. Net W.": t_net_w,
+        }
+
+        grouped.setdefault(subcategory, []).append(row_data)
+
+    # Build sorted output
+    output = []
+    subtotals = []
+
+    for subcat, products in grouped.items():
+        df_sub = pd.DataFrame(products)
+        df_sub["Subtotal"] = pd.to_numeric(df_sub["Subtotal"], errors="coerce")
+        total_subtotal = df_sub["Subtotal"].sum(min_count=1)
+
+        subtotals.append((subcat, products, total_subtotal))
+
+    # Sort by subtotal descending
+    subtotals.sort(key=lambda x: x[2], reverse=True)
+
+    for subcat, products, total_subtotal in subtotals:
+        output.append({
+            "SKU": "",
+            "Item": f"——— {subcat} ———",
+            "Units": "",
+            "Unit Price": "",
+            "Subtotal": "",
+            "Total": "",
+            "Origin": "",
+            "HS Code": "",
+            "Net W.": "",
+            "T. Net W.": "",
+        })
+        output.extend(products)
+
+        df_group = pd.DataFrame(products)
+        for col in ["Units", "Subtotal", "Total", "T. Net W."]:
+            df_group[col] = pd.to_numeric(df_group[col], errors="coerce")
+
+        output.append({
+            "SKU": "",
+            "Item": "                                            Subtotal",
+            "Units": round(df_group["Units"].sum(min_count=1), 1),
+            "Unit Price": "",
+            "Subtotal": round(df_group["Subtotal"].sum(min_count=1), 2),
+            "Total": round(df_group["Total"].sum(min_count=1), 2),
+            "Origin": "",
+            "HS Code": "",
+            "Net W.": "",
+            "T. Net W.": round(df_group["T. Net W."].sum(min_count=1), 3),
+        })
+
+    return pd.DataFrame(output)
 
 
 # ------------------- STREAMLIT APP -------------------
