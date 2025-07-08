@@ -283,7 +283,7 @@ if doc_input:
         
         # Apply styling and formatting for explode_order_row DataFrame
         styled_df = (
-            df_result
+            result_df
             .style
             .apply(highlight_subcategories, axis=1)
             .format({
