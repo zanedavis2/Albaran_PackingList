@@ -273,7 +273,30 @@ if doc_input:
         result_df = explode_order_row(albaran_df, row_idx, catalog_lookup=catalog_lookup)
 
         st.subheader("Product Table")
-        st.dataframe(result_df)
+
+        def highlight_subcategories(row):
+            if str(row['Item']).startswith('——'):
+                return ['font-weight: bold; background-color: #f0f0f0'] * len(row)
+            if str(row['Item']).strip() == "Subtotal" or "Subtotal" in str(row['Item']):
+                return ['font-weight: bold; text-align: right'] * len(row)
+            return [''] * len(row)
+        
+        # Apply styling and formatting for explode_order_row DataFrame
+        styled_df = (
+            df_result
+            .style
+            .apply(highlight_subcategories, axis=1)
+            .format({
+                "Units": "{:,.1f}",
+                "Unit Price": "{:,.2f}",
+                "Subtotal": "{:,.2f}",
+                "Total": "{:,.2f}",
+                "Net W.": "{:.2f}",
+                "T. Net W.": "{:.3f}",
+            }, na_rep="—")
+        )
+        
+        st.dataframe(styled_df)
 
         csv = result_df.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
