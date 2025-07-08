@@ -106,7 +106,7 @@ def build_origin_hs_lookup(all_products):
                 origin = val
             elif name == "taric":
                 hs_code = val
-            elif name == "Product Line":
+            elif name == "product line":
                 subcat = val
         lookup[pid] = {"Origin": origin, "HS Code": hs_code, "SubCat" : subcat }
     return lookup
