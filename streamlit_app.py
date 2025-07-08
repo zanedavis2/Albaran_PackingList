@@ -291,12 +291,12 @@ if doc_input:
             .style
             .apply(highlight_subcategories, axis=1)
             .format({
-                "Units": safe_format("{:,.1f}"),
+                "Units": safe_format("{:,.0f}"),
                 "Unit Price": safe_format("{:,.2f}"),
                 "Subtotal": safe_format("{:,.2f}"),
                 "Total": safe_format("{:,.2f}"),
                 "Net W.": safe_format("{:.2f}"),
-                "T. Net W.": safe_format("{:.3f}"),
+                "T. Net W.": safe_format("{:.2f}"),
             }, na_rep="—")
         )
         
