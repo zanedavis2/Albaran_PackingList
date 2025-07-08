@@ -296,7 +296,7 @@ if doc_input:
             }, na_rep="—")
         )
         
-        st.dataframe(styled_df)
+        st.write(styled_df)
 
         csv = result_df.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
