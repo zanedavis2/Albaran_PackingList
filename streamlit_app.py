@@ -244,7 +244,7 @@ if doc_input:
 
         bill_address_str = albaran_df.loc[row_idx, 'shippingData']
         
-        if pd.isnull(bill_address_str):
+        if not bill_address_str or str(bill_address_str).lower() == "nan":
             bill = data.get("billAddress", {})
             bill_address_str = (
                 f"{bill.get('address', '')}, {bill.get('postalCode', '').strip()}, "
