@@ -246,10 +246,13 @@ if doc_input:
         
         if not bill_address_str or str(bill_address_str).lower() == "nan":
             bill = data.get("billAddress", {})
-            bill_address_str = (
-                f"{bill.get('address', '')}, {bill.get('postalCode', '').strip()}, "
-                f"{bill.get('city', '')}, {bill.get('province', '')}, {bill.get('country', '')}"
-            )
+            address = bill.get('address') or ''
+            postal_code = (bill.get('postalCode') or '').strip()
+            city = bill.get('city') or ''
+            province = bill.get('province') or ''
+            country = bill.get('country') or ''
+            bill_address_str = f"{address}, {postal_code}, {city}, {province}, {country}"
+
 
         contact_email = data.get("email")
         if not contact_email:
