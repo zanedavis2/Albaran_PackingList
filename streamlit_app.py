@@ -296,25 +296,26 @@ if doc_input:
                 return ['font-weight: bold; text-align: right'] * len(row)
             return [''] * len(row)
         
-        # Helper: only format if number
-        def safe_format(fmt):
-            return lambda x: fmt.format(x) if isinstance(x, (int, float)) else x
+        def format_spanish(num_format):
+            def formatter(x):
+                if isinstance(x, (int, float)):
+                    return num_format.format(x).replace(",", "X").replace(".", ",").replace("X", ".")
+                return x
+            return formatter
         
-        # Styled dataframe with safe formatting
         styled_df = (
             result_df
             .style
             .apply(highlight_subcategories, axis=1)
             .format({
-                "Units": safe_format("{:,.0f}"),
-                "Unit Price": safe_format("{:,.2f}"),
-                "Subtotal": safe_format("{:,.2f}"),
-                "Total": safe_format("{:,.2f}"),
-                "Net W.": safe_format("{:.2f}"),
-                "T. Net W.": safe_format("{:.2f}"),
+                "Units": format_spanish("{:,.0f}"),
+                "Unit Price": format_spanish("{:,.2f}"),
+                "Subtotal": format_spanish("{:,.2f}"),
+                "Total": format_spanish("{:,.2f}"),
+                "Net W.": format_spanish("{:,.2f}"),
+                "T. Net W.": format_spanish("{:,.2f}"),
             }, na_rep="—")
         )
-        
         st.dataframe(styled_df)
 
         csv = result_df.to_csv(index=False).encode("utf-8-sig")
