@@ -316,8 +316,8 @@ if doc_input:
                 "Total Weight": format_spanish("{:,.2f}"),
             }, na_rep="—")
         )
-        st.dataframe(styled_df)
-
+        st.write(styled_df)
+        
         csv = result_df.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
             label="📥 Download CSV",
