@@ -239,6 +239,8 @@ def explode_order_raw(df, row_idx, products_col="products", catalog_lookup={}):
     for item in items:
         sku = item.get("sku")
         name = item.get("name")
+        gross_w = item.get("weight")
+        t_gross_w = gross_w * units if gross_w is not None and units is not None else None
         units = item.get("units") or item.get("quantity")
         unit_price = item.get("price") or item.get("unitPrice")
         tax = 1 + (item.get("tax", 0) / 100)
@@ -256,8 +258,8 @@ def explode_order_raw(df, row_idx, products_col="products", catalog_lookup={}):
         info = catalog_lookup.get(pid, {})
         origin = info.get("Origin")
         hs_code = info.get("HS Code")
-        net_w = item.get("weight") or item.get("netWeight")
-        t_net_w = net_w * units if net_w is not None and units is not None else None
+        net_weight = info.get("Net Weight")
+        t_net_w = net_weight * units if net_weight is not None and units is not None else None
 
         rows.append({
             "SKU": sku,
