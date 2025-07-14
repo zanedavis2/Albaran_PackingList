@@ -149,7 +149,7 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
         hs_code = info.get("HS Code")
         subcategory = info.get("SubCat")
         
-        gross_w = float(info.get("Weight"))
+        gross_w = info.get("Weight")
         t_gross_w = gross_w * units if gross_w is not None and units is not None else None
 
         
