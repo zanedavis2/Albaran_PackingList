@@ -375,7 +375,7 @@ if doc_input:
             }, na_rep="—")
         )
 
-         styled_df_raw = (
+        styled_df_raw = (
             flat_df
             .style
             .apply(highlight_subcategories, axis=1)
@@ -392,7 +392,7 @@ if doc_input:
         )
 
         st.subheader("Raw Product Table")
-        st.dataframe(flat_df)
+        st.write(styled_df_raw)
         raw_csv = flat_df.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
             label="📥 Download CSV",
