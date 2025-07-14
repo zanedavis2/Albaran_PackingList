@@ -128,7 +128,7 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
 
     for item in items:
         sku = item.get("sku")
-        name = item.get("name")
+        prod_name = item.get("name")
         gross_w = item.get("weight")        
         units = item.get("units") or item.get("quantity")
         t_gross_w = gross_w * units if gross_w is not None and units is not None else None
@@ -169,7 +169,7 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
 
         row_data = {
             "SKU": sku,
-            "Item": name,
+            "Item": prod_name,
             "Units": units,
             "Unit Price": unit_price,
             "Subtotal": subtotal,
