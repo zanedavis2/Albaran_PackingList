@@ -128,12 +128,15 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
 
     for item in items:
         sku = item.get("sku")
-        prod_name = item.get("name")
+        prod_name = item.get("name")        
+        units = item.get("units") or item.get("quantity")
         try:
             gross_w = float(item.get("weight"))
         except (TypeError, ValueError):
-            gross_w = None        
-        units = item.get("units") or item.get("quantity")
+            gross_w = None   
+            
+        st.write(f"SKU: {sku} | Name: {prod_name} | Weight: {gross_w}")
+        
         t_gross_w = gross_w * units if gross_w is not None and units is not None else None
         unit_price = item.get("price") or item.get("unitPrice")
         tax = 1 + (item.get("tax", 0) / 100)
