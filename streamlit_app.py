@@ -370,8 +370,8 @@ if doc_input:
                 "Total": format_spanish("{:,.2f}"),
                 "Net W.": format_spanish("{:,.2f}"),
                 "Total W.": format_spanish("{:,.2f}"),
-                "Gross W.": gross_w,
-                "Total Gross W. ": t_gross_w
+                "Gross W.": format_spanish("{:,.2f}"),
+                "Total Gross W.": format_spanish("{:,.2f}")
             }, na_rep="—")
         )
 
@@ -386,8 +386,8 @@ if doc_input:
                 "Total": format_spanish("{:,.2f}"),
                 "Net W.": format_spanish("{:,.2f}"),
                 "Total W.": format_spanish("{:,.2f}"),
-                "Gross W.": gross_w,
-                "Total Gross W. ": t_gross_w
+                "Gross W.": format_spanish("{:,.2f}"),
+                "Total Gross W. ": format_spanish("{:,.2f}"),
             }, na_rep="—")
         )
 
