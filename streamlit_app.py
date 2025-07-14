@@ -158,8 +158,8 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
             "Total": total,
             "Origin": origin,
             "HS Code": hs_code,
-            "Net W.": net_w,
-            "T. Net W.": t_net_w,
+            "Weight": net_w,
+            "Total W.": t_net_w,
         }
 
         grouped.setdefault(subcategory, []).append(row_data)
@@ -194,8 +194,8 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
             "Total": "",
             "Origin": "",
             "HS Code": "",
-            "Net W.": "",
-            "T. Net W.": "",
+            "Weight": "",
+            "Total Weight": "",
         })
         output.extend(products)
 
@@ -212,8 +212,8 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
             "Total": round(df_group["Total"].sum(min_count=1), 2),
             "Origin": "",
             "HS Code": "",
-            "Net W.": "",
-            "T. Net W.": round(df_group["T. Net W."].sum(min_count=1), 3),
+            "Weight": "",
+            "Total Weight": round(df_group["T. Net W."].sum(min_count=1), 3),
         })
 
     return pd.DataFrame(output)
