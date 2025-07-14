@@ -128,6 +128,7 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
     grouped = {}
 
     for item in items:
+        st.write(item)
         sku = item.get("sku")
         name = item.get("name")
         gross_w = item.get("weight")        
