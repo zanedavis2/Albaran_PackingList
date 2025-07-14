@@ -104,6 +104,7 @@ def build_origin_hs_lookup(all_products):
         if not pid:
             continue
         origin = hs_code = None
+        net_weight = None
         subcat = "Sin linea de productos"
         for attr in p.get("attributes", []):
             name = attr.get("name", "").strip().lower()
@@ -114,7 +115,9 @@ def build_origin_hs_lookup(all_products):
                 hs_code = val
             elif name == "product line":
                 subcat = val
-        lookup[pid] = {"Origin": origin, "HS Code": hs_code, "SubCat" : subcat }
+            elif name == "Peso Neto":
+                net_weight = val
+        lookup[pid] = {"Origin": origin, "HS Code": hs_code, "SubCat" : subcat, "Net Weight" : net_weight}
     return lookup
 
 
@@ -127,6 +130,8 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
     for item in items:
         sku = item.get("sku")
         name = item.get("name")
+        gross_w = item.get("weight")
+        t_gross_w = gross_w * units if gross_w is not None and units is not None else None
         units = item.get("units") or item.get("quantity")
         unit_price = item.get("price") or item.get("unitPrice")
         tax = 1 + (item.get("tax", 0) / 100)
@@ -144,8 +149,8 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
         info = catalog_lookup.get(pid, {})
         origin = info.get("Origin")
         hs_code = info.get("HS Code")
-        net_w = item.get("weight") or item.get("netWeight")
-        t_net_w = net_w * units if net_w is not None and units is not None else None
+        net_weight = info.get("Net Weight")
+        t_net_w = net_weight * units if net_weight is not None and units is not None else None
         subcategory = info.get("SubCat")
       
 
@@ -158,8 +163,10 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
             "Total": total,
             "Origin": origin,
             "HS Code": hs_code,
-            "Weight": net_w,
+            "Net W.": net_weight,
             "Total W.": t_net_w,
+            "Gross W.": gross_w,
+            "Total Gross W. ": t_gross_w
         }
 
         grouped.setdefault(subcategory, []).append(row_data)
@@ -194,8 +201,10 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
             "Total": "",
             "Origin": "",
             "HS Code": "",
-            "Weight": "",
+            "Net W.": "",
             "Total W.": "",
+            "Gross W.": "",
+            "Total Gross W. ": ""
         })
         output.extend(products)
 
@@ -212,8 +221,10 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
             "Total": round(df_group["Total"].sum(min_count=1), 2),
             "Origin": "",
             "HS Code": "",
-            "Weight": "",
+            "Net W.": "",
             "Total W.": round(df_group["Total W."].sum(min_count=1), 3),
+            "Gross W.": "",
+            "Total Gross W. ": ""
         })
 
     return pd.DataFrame(output)
@@ -257,8 +268,10 @@ def explode_order_raw(df, row_idx, products_col="products", catalog_lookup={}):
             "Total": total,
             "Origin": origin,
             "HS Code": hs_code,
-            "Weight": net_w,
+            "Net W.": net_weight,
             "Total W.": t_net_w,
+            "Gross W.": gross_w,
+            "Total Gross W. ": t_gross_w
         })
 
     return pd.DataFrame(rows)
@@ -329,8 +342,9 @@ if doc_input:
         st.write(f"**Phone**: {contact_phone}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**Mobile**: {contact_mobile}", unsafe_allow_html=True)
         st.write(f"**Billing Address**: {bill_address_str}")
 
+        flat_df = explode_order_raw(albaran_df, row_idx, catalog_lookup=catalog_lookup)
         result_df = explode_order_row(albaran_df, row_idx, catalog_lookup=catalog_lookup)
-
+        
         def highlight_subcategories(row):
             if str(row['Item']).startswith('——'):
                 return ['font-weight: bold; background-color: #f0f0f0'] * len(row)
@@ -354,12 +368,29 @@ if doc_input:
                 "Unit Price": format_spanish("{:,.2f}"),
                 "Subtotal": format_spanish("{:,.2f}"),
                 "Total": format_spanish("{:,.2f}"),
-                "Weight": format_spanish("{:,.2f}"),
+                "Net W.": format_spanish("{:,.2f}"),
                 "Total W.": format_spanish("{:,.2f}"),
+                "Gross W.": gross_w,
+                "Total Gross W. ": t_gross_w
             }, na_rep="—")
         )
 
-        flat_df = explode_order_raw(albaran_df, row_idx, catalog_lookup=catalog_lookup)
+         styled_df_raw = (
+            flat_df
+            .style
+            .apply(highlight_subcategories, axis=1)
+            .format({
+                "Units": format_spanish("{:,.0f}"),
+                "Unit Price": format_spanish("{:,.2f}"),
+                "Subtotal": format_spanish("{:,.2f}"),
+                "Total": format_spanish("{:,.2f}"),
+                "Net W.": format_spanish("{:,.2f}"),
+                "Total W.": format_spanish("{:,.2f}"),
+                "Gross W.": gross_w,
+                "Total Gross W. ": t_gross_w
+            }, na_rep="—")
+        )
+
         st.subheader("Raw Product Table")
         st.dataframe(flat_df)
         raw_csv = flat_df.to_csv(index=False).encode("utf-8-sig")
