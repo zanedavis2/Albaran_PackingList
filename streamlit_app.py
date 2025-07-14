@@ -169,8 +169,8 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
 
         subtotals.append((subcat, products, total_subtotal))
 
-    subtotals.sort(key=lambda x: x[0])
-
+        subtotals.sort(key=lambda x: x[0])
+        
     for subcat, products, total_subtotal in subtotals:
         output.append({
             "SKU": "",
