@@ -13,6 +13,12 @@ password = st.text_input("Enter password", type="password")
 if password != st.secrets["app_password"]:
     st.stop()
 
+
+refresh = st.button("🔄 Refresh Data")
+if refresh:
+    st.cache_data.clear()
+    st.success("✅ Cache cleared. Fresh data will be loaded.")
+
 # ------------------- API CONFIG -------------------
 API_KEY = st.secrets["api_key"]
 HEADERS = {"accept": "application/json", "key": API_KEY}
@@ -26,7 +32,7 @@ def fetch_albaranes():
     return pd.DataFrame(response.json())
 
 
-@st.cache_data(ttl=86400)  # Cache for 24 hours
+@st.cache_data(ttl=45000)  # Cache for 24 hours
 def fetch_all_products():
     BASE_URL = "https://api.holded.com/api/invoicing/v1/products"
     PAGE_SIZE = 100
