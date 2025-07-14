@@ -164,17 +164,17 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
 
     
     for subcat, products in grouped.items():
-    if subcat is None:
-        subcat = "Sin categoría"
-    else:
-        subcat = str(subcat).strip()
-
-    df_sub = pd.DataFrame(products)
-    df_sub["Subtotal"] = pd.to_numeric(df_sub["Subtotal"], errors="coerce")
-    total_subtotal = df_sub["Subtotal"].sum(min_count=1)
-
-    subtotals.append((subcat, products, total_subtotal))
-
+        if subcat is None:
+            subcat = "Sin categoría"
+        else:
+            subcat = str(subcat).strip()
+    
+        df_sub = pd.DataFrame(products)
+        df_sub["Subtotal"] = pd.to_numeric(df_sub["Subtotal"], errors="coerce")
+        total_subtotal = df_sub["Subtotal"].sum(min_count=1)
+    
+        subtotals.append((subcat, products, total_subtotal))
+    
     subtotals.sort(key=lambda x: x[0])
    
         
