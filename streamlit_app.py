@@ -150,7 +150,7 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
         hs_code = info.get("HS Code")
         subcategory = info.get("SubCat")
 
-
+        attributes = info.get("Attributes") or []
         net_weight = None
         for attr in attributes:
             name = attr.get("name", "")
