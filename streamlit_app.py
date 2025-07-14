@@ -271,7 +271,19 @@ def explode_order_raw(df, row_idx, products_col="products", catalog_lookup={}):
         info = catalog_lookup.get(pid, {})
         origin = info.get("Origin")
         hs_code = info.get("HS Code")
-        net_weight = info.get("Net Weight")
+        
+        attributes = info.get("Attributes") or []
+        net_weight = None
+        for attr in attributes:
+            name = attr.get("name", "")
+            raw_value = attr.get("value")
+            try:
+                value = float(raw_value)
+            except (TypeError, ValueError):
+                continue
+            if name == "Peso Neto":
+                net_weight = value
+                
         t_net_w = net_weight * units if net_weight is not None and units is not None else None
 
         rows.append({
