@@ -195,12 +195,12 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
             "Origin": "",
             "HS Code": "",
             "Weight": "",
-            "Total Weight": "",
+            "Total W.": "",
         })
         output.extend(products)
 
         df_group = pd.DataFrame(products)
-        for col in ["Units", "Subtotal", "Total", "Total Weight"]:
+        for col in ["Units", "Subtotal", "Total", "Total W."]:
             df_group[col] = pd.to_numeric(df_group[col], errors="coerce")
 
         output.append({
@@ -213,7 +213,7 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
             "Origin": "",
             "HS Code": "",
             "Weight": "",
-            "Total Weight": round(df_group["Total Weight"].sum(min_count=1), 3),
+            "Total W.": round(df_group["Total W."].sum(min_count=1), 3),
         })
 
     return pd.DataFrame(output)
@@ -313,7 +313,7 @@ if doc_input:
                 "Subtotal": format_spanish("{:,.2f}"),
                 "Total": format_spanish("{:,.2f}"),
                 "Weight": format_spanish("{:,.2f}"),
-                "Total Weight": format_spanish("{:,.2f}"),
+                "Total W.": format_spanish("{:,.2f}"),
             }, na_rep="—")
         )
         st.write(styled_df)
