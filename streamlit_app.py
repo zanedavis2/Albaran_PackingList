@@ -256,8 +256,6 @@ def explode_order_raw(df, row_idx, products_col="products", catalog_lookup={}):
 
         pid = item.get("productId")
         info = catalog_lookup.get(pid, {})
-        for attr in pid.get("attributes", []):
-            st.write(attr)
         origin = info.get("Origin")
         hs_code = info.get("HS Code")
         net_weight = info.get("Net Weight")
