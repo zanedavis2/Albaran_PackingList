@@ -219,6 +219,50 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
     return pd.DataFrame(output)
 
 
+
+def explode_order_raw(df, row_idx, products_col="products", catalog_lookup={}):
+    """Returns a flat product DataFrame without grouping or subtotals."""
+    items = df.at[row_idx, products_col] or []
+    rows = []
+
+    for item in items:
+        sku = item.get("sku")
+        name = item.get("name")
+        units = item.get("units") or item.get("quantity")
+        unit_price = item.get("price") or item.get("unitPrice")
+        tax = 1 + (item.get("tax", 0) / 100)
+        discount = 1 - (item.get("discount", 0) / 100)
+
+        unit_price = (
+            round(unit_price * discount, 2) if units is not None and unit_price is not None else None
+        )
+        subtotal = (
+            round(units * unit_price, 2) if units is not None and unit_price is not None else None
+        )
+        total = round(subtotal * tax, 2) if subtotal is not None else None
+
+        pid = item.get("productId")
+        info = catalog_lookup.get(pid, {})
+        origin = info.get("Origin")
+        hs_code = info.get("HS Code")
+        net_w = item.get("weight") or item.get("netWeight")
+        t_net_w = net_w * units if net_w is not None and units is not None else None
+
+        rows.append({
+            "SKU": sku,
+            "Item": name,
+            "Units": units,
+            "Unit Price": unit_price,
+            "Subtotal": subtotal,
+            "Total": total,
+            "Origin": origin,
+            "HS Code": hs_code,
+            "Weight": net_w,
+            "Total W.": t_net_w,
+        })
+
+    return pd.DataFrame(rows)
+
 # ------------------- STREAMLIT APP -------------------
 
 st.title("Albarán Lookup")
@@ -287,8 +331,6 @@ if doc_input:
 
         result_df = explode_order_row(albaran_df, row_idx, catalog_lookup=catalog_lookup)
 
-        st.subheader("Product Table")
-
         def highlight_subcategories(row):
             if str(row['Item']).startswith('——'):
                 return ['font-weight: bold; background-color: #f0f0f0'] * len(row)
@@ -316,6 +358,19 @@ if doc_input:
                 "Total W.": format_spanish("{:,.2f}"),
             }, na_rep="—")
         )
+
+        flat_df = explode_order_raw(albaran_df, row_idx, catalog_lookup=catalog_lookup)
+        st.subheader("Raw Product Table")
+        st.dataframe(flat_df)
+        raw_csv = flat_df.to_csv(index=False).encode("utf-8-sig")
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv,
+            file_name=f"albaran_raw_{albaran_df.loc[row_idx, 'docNumber']}.csv",
+            mime="text/csv",
+        )
+                     
+        st.subheader("Product Table (Sorted)")
         st.write(styled_df)
         
         csv = result_df.to_csv(index=False).encode("utf-8-sig")
