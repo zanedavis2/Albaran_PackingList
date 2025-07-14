@@ -100,6 +100,7 @@ def build_origin_hs_lookup(all_products):
     """Builds a lookup dict keyed by product ID with Origin & HS Code."""
     lookup = {}
     for p in all_products:
+        st.write(p)
         pid = p.get("id") or p.get("productId")
         if not pid:
             continue
@@ -128,7 +129,6 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
     grouped = {}
 
     for item in items:
-        st.write(item)
         sku = item.get("sku")
         name = item.get("name")
         gross_w = item.get("weight")        
