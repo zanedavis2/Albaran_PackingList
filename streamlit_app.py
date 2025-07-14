@@ -275,6 +275,8 @@ def explode_order_raw(df, row_idx, products_col="products", catalog_lookup={}):
         info = catalog_lookup.get(pid, {})
         origin = info.get("Origin")
         hs_code = info.get("HS Code")
+        gross_w = info.get("Weight")
+        t_gross_w = gross_w * units if gross_w is not None and units is not None else None
         
         attributes = info.get("Attributes") or []
         net_weight = None
