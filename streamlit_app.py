@@ -104,7 +104,6 @@ def build_origin_hs_lookup(all_products):
         if not pid:
             continue
         origin = hs_code = None
-        net_weight = None
         subcat = "Sin linea de productos"
         for attr in p.get("attributes", []):
             name = attr.get("name", "").strip().lower()
@@ -115,9 +114,9 @@ def build_origin_hs_lookup(all_products):
                 hs_code = val
             elif name == "product line":
                 subcat = val
-            elif name == "Peso Neto":
-                net_weight = val
-        lookup[pid] = {"Origin": origin, "HS Code": hs_code, "SubCat" : subcat, "Net Weight" : net_weight}
+
+        
+        lookup[pid] = {"Origin": origin, "HS Code": hs_code, "SubCat" : subcat, "Attributes": p.get("attributes")}
     return lookup
 
 
@@ -149,10 +148,24 @@ def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
         info = catalog_lookup.get(pid, {})
         origin = info.get("Origin")
         hs_code = info.get("HS Code")
-        net_weight = info.get("Net Weight")
+        subcategory = info.get("SubCat")
+
+
+        net_weight = None
+        for attr in attributes:
+            name = attr.get("name", "")
+            raw_value = attr.get("value")
+            try:
+                value = float(raw_value)
+            except (TypeError, ValueError):
+                continue
+            if name == "Peso Neto":
+                net_weight = value
+                
         t_net_w = net_weight * units if net_weight is not None and units is not None else None
         subcategory = info.get("SubCat")
-      
+
+        
 
         row_data = {
             "SKU": sku,
