@@ -365,7 +365,7 @@ if doc_input:
         raw_csv = flat_df.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
             label="📥 Download CSV",
-            data=csv,
+            data=raw_csv,
             file_name=f"albaran_raw_{albaran_df.loc[row_idx, 'docNumber']}.csv",
             mime="text/csv",
         )
