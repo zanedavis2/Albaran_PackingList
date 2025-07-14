@@ -100,7 +100,6 @@ def build_origin_hs_lookup(all_products):
     """Builds a lookup dict keyed by product ID with Origin & HS Code."""
     lookup = {}
     for p in all_products:
-        st.write(p)
         pid = p.get("id") or p.get("productId")
         if not pid:
             continue
