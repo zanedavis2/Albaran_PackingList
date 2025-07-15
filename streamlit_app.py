@@ -404,7 +404,7 @@ if doc_input:
                 "Net W.": format_spanish("{:,.2f}"),
                 "Total W.": format_spanish("{:,.2f}"),
                 "Gross W.": format_spanish("{:,.2f}"),
-                "Total Gross W.": format_spanish("{:,.2f}")
+                "Total Gross W. ": format_spanish("{:,.2f}")
             }, na_rep="—")
         )
 
