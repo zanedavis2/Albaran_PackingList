@@ -427,13 +427,19 @@ if doc_input:
 
         st.subheader("Raw Product Table")
         st.write(styled_df_raw)
-        raw_csv = flat_df.to_csv(index=False).encode("utf-8-sig")
+        
+        excel_buffer = io.BytesIO()
+        file_name = f"albaran_sorted_{albaran_df.loc[row_idx, 'docNumber']}.xlsx"
+        
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            flat_df.to_excel(writer, index=False, sheet_name='Sheet1')
+        excel_buffer.seek(0) 
         
         st.download_button(
-            label="📥 Download CSV",
-            data=raw_csv,
-            file_name=f"albaran_raw_{albaran_df.loc[row_idx, 'docNumber']}.csv",
-            mime="text/csv",
+            label="📥 Download Excel",
+            data=excel_buffer,
+            file_name=file_name,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
                      
         st.subheader("Product Table (Sorted)")
