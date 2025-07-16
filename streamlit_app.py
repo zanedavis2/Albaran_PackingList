@@ -429,7 +429,7 @@ if doc_input:
         st.write(styled_df_raw)
         
         excel_buffer = io.BytesIO()
-        raw_file_name = f"albaran_sorted_{albaran_df.loc[row_idx, 'docNumber']}.xlsx"
+        file_name = f"albaran_sorted_{albaran_df.loc[row_idx, 'docNumber']}.xlsx"
         
         with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
             flat_df.to_excel(writer, index=False, sheet_name='Sheet1')
@@ -438,8 +438,9 @@ if doc_input:
         st.download_button(
             label="📥 Download Excel",
             data=excel_buffer,
-            file_name=raw_file_name,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            file_name=file_name,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key=f"download_excel_{file_name}"
         )
                      
         st.subheader("Product Table (Sorted)")
@@ -458,7 +459,8 @@ if doc_input:
             label="📥 Download Excel",
             data=excel_buffer,
             file_name=file_name,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key=f"download_excel_{file_name}"
         )
     else:
         st.warning(f"No document found with DocNumber: {doc_input}")
