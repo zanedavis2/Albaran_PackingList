@@ -6,6 +6,7 @@ import time
 import json
 from datetime import datetime, timezone
 import pytz
+import io
 
 # ------------------- AUTHENTICATION -------------------
 password = st.text_input("Enter password", type="password")
@@ -427,6 +428,7 @@ if doc_input:
         st.subheader("Raw Product Table")
         st.write(styled_df_raw)
         raw_csv = flat_df.to_csv(index=False).encode("utf-8-sig")
+        
         st.download_button(
             label="📥 Download CSV",
             data=raw_csv,
@@ -437,12 +439,21 @@ if doc_input:
         st.subheader("Product Table (Sorted)")
         st.write(styled_df)
         
-        csv = result_df.to_csv(index=False).encode("utf-8-sig")
+        file_name = f"albaran_sorted_{albaran_df.loc[row_idx, 'docNumber']}.xlsx"
+        
+        excel_buffer = io.BytesIO()
+        
+        with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+            writer.save()
+        excel_buffer.seek(0)  # Reset pointer
+        
+        # Download button
         st.download_button(
-            label="📥 Download CSV",
-            data=csv,
-            file_name=f"albaran_{albaran_df.loc[row_idx, 'docNumber']}.csv",
-            mime="text/csv",
+            label="📥 Download Excel",
+            data=excel_buffer,
+            file_name=file_name,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     else:
         st.warning(f"No document found with DocNumber: {doc_input}")
