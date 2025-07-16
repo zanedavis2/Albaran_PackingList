@@ -443,10 +443,9 @@ if doc_input:
         
         excel_buffer = io.BytesIO()
         
-        with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Sheet1')
-            writer.save()
-        excel_buffer.seek(0)  # Reset pointer
+        excel_buffer.seek(0)  # Reset buffer position
         
         # Download button
         st.download_button(
