@@ -429,7 +429,7 @@ if doc_input:
         st.write(styled_df_raw)
         
         excel_buffer = io.BytesIO()
-        file_name = f"albaran_sorted_{albaran_df.loc[row_idx, 'docNumber']}.xlsx"
+        file_name = f"albaran_raw_{albaran_df.loc[row_idx, 'docNumber']}.xlsx"
         
         with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
             flat_df.to_excel(writer, index=False, sheet_name='Sheet1')
