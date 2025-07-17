@@ -259,6 +259,7 @@ if doc_input:
         
         styled_df_raw = (
             flat_df
+            .style
             .format({
                 "Units": format_spanish("{:,.0f}"),
                 "Unit Price": format_spanish("{:,.2f}"),
