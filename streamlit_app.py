@@ -121,134 +121,6 @@ def build_origin_hs_lookup(all_products):
         lookup[pid] = {"Origin": origin, "HS Code": hs_code, "SubCat" : subcat, "Attributes": p.get("attributes"), "Weight" : gross_w}
     return lookup
 
-
-def explode_order_row(df, row_idx, products_col="products", catalog_lookup={}):
-    """Explodes the products list inside one albarán row into a flat DataFrame grouped by subcategory with subtotal and sorting."""
-
-    items = df.at[row_idx, products_col] or []
-    grouped = {}
-
-    for item in items:
-        sku = item.get("sku")
-        prod_name = item.get("name")        
-        units = item.get("units") or item.get("quantity")
-        unit_price = item.get("price") or item.get("unitPrice")
-        tax = 1 + (item.get("tax", 0) / 100)
-        discount = 1 - (item.get("discount", 0) / 100)
-
-        unit_price = (
-            round(unit_price * discount, 2) if units is not None and unit_price is not None else None
-        )
-        subtotal = (
-            round(units * unit_price, 2) if units is not None and unit_price is not None else None
-        )
-        total = round(subtotal * tax, 2) if subtotal is not None else None
-
-        pid = item.get("productId")
-        info = catalog_lookup.get(pid, {})
-        origin = info.get("Origin")
-        hs_code = info.get("HS Code")
-        subcategory = info.get("SubCat")
-        
-        gross_w = info.get("Weight")
-        t_gross_w = gross_w * units if gross_w is not None and units is not None else None
-
-        
-        attributes = info.get("Attributes") or []
-        
-        net_weight = None
-        for attr in attributes:
-            name = attr.get("name", "")
-            raw_value = attr.get("value")
-            try:
-                value = float(raw_value)
-            except (TypeError, ValueError):
-                continue
-            if name == "Peso Neto":
-                net_weight = value
-                
-        t_net_w = net_weight * units if net_weight is not None and units is not None else None
-        subcategory = info.get("SubCat")
-
-        
-
-        row_data = {
-            "SKU": sku,
-            "Item": prod_name,
-            "Units": units,
-            "Unit Price": unit_price,
-            "Subtotal": subtotal,
-            "Total": total,
-            "Origin": origin,
-            "HS Code": hs_code,
-            "Net W.": net_weight,
-            "Total W.": t_net_w,
-            "Gross W.": gross_w,
-            "Total Gross W. ": t_gross_w
-        }
-
-        grouped.setdefault(subcategory, []).append(row_data)
-
-    # Build sorted output
-    output = []
-    subtotals = []
-
-    
-    for subcat, products in grouped.items():
-        if subcat is None:
-            subcat = "Sin categoría"
-        else:
-            subcat = str(subcat).strip()
-    
-        df_sub = pd.DataFrame(products)
-        df_sub["Subtotal"] = pd.to_numeric(df_sub["Subtotal"], errors="coerce")
-        total_subtotal = df_sub["Subtotal"].sum(min_count=1)
-    
-        subtotals.append((subcat, products, total_subtotal))
-    
-    subtotals.sort(key=lambda x: x[0])
-   
-        
-    for subcat, products, total_subtotal in subtotals:
-        output.append({
-            "SKU": "",
-            "Item": f"——— {subcat} ———",
-            "Units": "",
-            "Unit Price": "",
-            "Subtotal": "",
-            "Total": "",
-            "Origin": "",
-            "HS Code": "",
-            "Net W.": "",
-            "Total W.": "",
-            "Gross W.": "",
-            "Total Gross W. ": ""
-        })
-        output.extend(products)
-
-        df_group = pd.DataFrame(products)
-        for col in ["Units", "Subtotal", "Total", "Total W."]:
-            df_group[col] = pd.to_numeric(df_group[col], errors="coerce")
-
-        output.append({
-            "SKU": "",
-            "Item": "                                            Subtotal",
-            "Units": round(df_group["Units"].sum(min_count=1), 1),
-            "Unit Price": "",
-            "Subtotal": round(df_group["Subtotal"].sum(min_count=1), 2),
-            "Total": round(df_group["Total"].sum(min_count=1), 2),
-            "Origin": "",
-            "HS Code": "",
-            "Net W.": "",
-            "Total W.": round(df_group["Total W."].sum(min_count=1), 3),
-            "Gross W.": "",
-            "Total Gross W. ": ""
-        })
-
-    return pd.DataFrame(output)
-
-
-
 def explode_order_raw(df, row_idx, products_col="products", catalog_lookup={}):
     """Returns a flat product DataFrame without grouping or subtotals."""
     items = df.at[row_idx, products_col] or []
@@ -377,14 +249,6 @@ if doc_input:
         st.write(f"**Billing Address**: {bill_address_str}")
 
         flat_df = explode_order_raw(albaran_df, row_idx, catalog_lookup=catalog_lookup)
-        result_df = explode_order_row(albaran_df, row_idx, catalog_lookup=catalog_lookup)
-        
-        def highlight_subcategories(row):
-            if str(row['Item']).startswith('——'):
-                return ['font-weight: bold; background-color: #f0f0f0'] * len(row)
-            if str(row['Item']).strip() == "Subtotal" or "Subtotal" in str(row['Item']):
-                return ['font-weight: bold; text-align: right'] * len(row)
-            return [''] * len(row)
         
         def format_spanish(num_format):
             def formatter(x):
@@ -393,22 +257,6 @@ if doc_input:
                 return x
             return formatter
         
-        styled_df = (
-            result_df
-            .style
-            .apply(highlight_subcategories, axis=1)
-            .format({
-                "Units": format_spanish("{:,.0f}"),
-                "Unit Price": format_spanish("{:,.2f}"),
-                "Subtotal": format_spanish("{:,.2f}"),
-                "Total": format_spanish("{:,.2f}"),
-                "Net W.": format_spanish("{:,.2f}"),
-                "Total W.": format_spanish("{:,.2f}"),
-                "Gross W.": format_spanish("{:,.2f}"),
-                "Total Gross W. ": format_spanish("{:,.2f}")
-            }, na_rep="—")
-        )
-
         styled_df_raw = (
             flat_df
             .style
@@ -425,7 +273,7 @@ if doc_input:
             }, na_rep="—")
         )
 
-        st.subheader("Raw Product Table")
+        st.subheader("Product Table")
         st.write(styled_df_raw)
         
         excel_buffer = io.BytesIO()
@@ -443,25 +291,6 @@ if doc_input:
             key=f"download_excel_{file_name}"
         )
                      
-        st.subheader("Product Table (Sorted)")
-        st.write(styled_df)
-        
-        file_name = f"albaran_sorted_{albaran_df.loc[row_idx, 'docNumber']}.xlsx"
-        
-        excel_buffer = io.BytesIO()
-        
-        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-            result_df.to_excel(writer, index=False, sheet_name='Sheet1')
-        excel_buffer.seek(0)  # Reset buffer position
-        
-        # Download button
-        st.download_button(
-            label="📥 Download Excel",
-            data=excel_buffer,
-            file_name=file_name,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key=f"download_excel_{file_name}"
-        )
     else:
         st.warning(f"No document found with DocNumber: {doc_input}")
 
